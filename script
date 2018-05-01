@@ -4,7 +4,9 @@ let fs = require('fs');
 let shell = require('shelljs');
 let path = require('path');
 let program = require('commander');
-let escape = require('escape-quotes');
+let escape = require('escape-quotes');;
+let { docker, ssh } = require('./src/commands');
+let { checkPrerequisites } = require('./src/prerequisites');
 
 program
   .version('0.1.0')
@@ -12,26 +14,19 @@ program
   .option('-s, --server', 'Setup server')
   .parse(process.argv);
 
-
-const docker = {
-    exec: container => command => `docker exec ${container} sh -c "${command}"`
-}
-
 const CONTAINER = 'wordpressbox';
-const dockerBox = docker.exec(CONTAINER);
+const WEB_PORT = '4000';
+const SSH_PORT = '4001';
+const USER = 'ubuntu';
+const PUBLIC_KEY_PATH = '/home/gemma/.ssh/id_rsa.pub';
+const PRIVATE_KEY_PATH = '/home/gemma/.ssh/id_rsa';
 
+const dockerBox = docker(CONTAINER);
+const runSSH = ssh({ username: USER, host: 'localhost', port: SSH_PORT, keyPath: PRIVATE_KEY_PATH });
 
-if (!shell.which('git')) {
-    shell.echo('Sorry, this script requires git');
-    shell.exit(1);
-}
+checkPrerequisites(shell);
 
-if (!shell.which('docker')) {
-    shell.echo('Sorry, this script requires docker');
-    shell.exit(1);
-}
-
-let publicKey = fs.readFileSync('/home/gemma/.ssh/id_rsa.pub');
+let publicKey = fs.readFileSync(PUBLIC_KEY_PATH);
 
 // Clean up old container
 
@@ -53,6 +48,12 @@ if (program.docker) {
         shell.exit(1);
     }
 
+    // Add sudo
+    if (shell.exec(dockerBox('apt-get install sudo -y')).code !== 0) {
+        shell.echo('Sudo package could not be installed');
+        shell.exit(1);
+    }
+
     // Creates a new non-root user
 
     if (shell.exec(dockerBox('adduser --disabled-password ubuntu')).code !== 0) {
@@ -64,6 +65,16 @@ if (program.docker) {
 
     if (shell.exec(dockerBox('usermod -aG sudo ubuntu')).code !== 0) {
         shell.echo('Could not add user to the sudo group');
+        shell.exit(1);
+    }
+
+    if (shell.exec(dockerBox('passwd -d ubuntu')).code !== 0) {
+        shell.echo('Could not remove password for ubuntu');
+        shell.exit(1);
+    }
+
+    if (shell.exec(dockerBox('echo \'ubuntu ALL=(ALL) NOPASSWD:ALL\' | sudo EDITOR=\'tee -a\' visudo')).code !== 0) {
+        shell.exec('Could not remove sudo password for ubuntu');
         shell.exit(1);
     }
 
@@ -106,6 +117,16 @@ if (program.docker) {
         shell.exit(1);   
     }
 
+    if (shell.exec(dockerBox('chown -R root:ubuntu /var')).code !== 0) {
+        shell.echo('Could not change ownership of var directory');
+        shell.exit(1);   
+    }
+
+    if (shell.exec(dockerBox('find /var -type -d -exec chmod 775 {} \;')).code !== 0) {
+        shell.echo('Could not change ownership of var directory');
+        shell.exit(1);   
+    }
+
     shell.echo('SSH IN USING:');
     shell.echo('ssh -i ~/.ssh/id_rsa ubuntu@localhost -p 4001');
     shell.echo('Docker container starter. Go to http://localhost:4000');
@@ -114,21 +135,42 @@ if (program.docker) {
 // Setup PHP
 
 if (program.server) {
-    if (shell.exec(dockerBox('apt-get install software-properties-common -y')).code !== 0) {
-        shell.echo('Could not add common software repository')
+    if (shell.exec('ssh-keygen -f "/home/gemma/.ssh/known_hosts" -R [localhost]:4001 -y').code !== 0) {
+        shell.echo('Could not add known hosts to keygen');
         shell.exit(1);
     }
 
-    if (shell.exec(dockerBox('add-apt-repository ppa:ondrej/php')).code !== 0) {
-        shell.echo('Could not add PHP repository');
+    shell.echo('Running software properties common');
+
+    if (shell.exec(runSSH('apt-get install software-properties-common -y')).code !== 0) {
+        shell.echo('Could not add common software repository ' + runSSH('apt-get install software-properties-common -y'))
         shell.exit(1);
     }
 
-    if (shell.exec(dockerBox('apt-get update && apt-get -y upgrade')).code !== 0) {
+    shell.echo('Adding PHP repository');
+
+    if (shell.exec(runSSH('add-apt-repository ppa:ondrej/php -y')).code !== 0) {
+        shell.echo('Could not add PHP repository: ' + runSSH('add-apt-repository ppa:ondrej/php -y'));
+        shell.exit(1);
+    }
+
+    shell.echo('Updating system');
+
+    if (shell.exec(runSSH('apt-get update -y')).code !== 0) {
+        shell.echo('Could not run update');
         shell.exit(1);   
     }
 
-    if (shell.exec(dockerBox('apt-get install php7.1 php7.1-cli php7.1-common php7.1-json php7.1-opcache php7.1-mysql php7.1-mbstring php7.1-mcrypt php7.1-zip php7.1-fpm -y')).code !== 0) {
+    shell.echo('Upgrading system');
+
+    if (shell.exec(runSSH('apt-get -y upgrade')).code !== 0) {
+        shell.echo('Could not run upgrade');
+        shell.exit(1);   
+    }
+
+    shell.echo('Installing PHP');
+
+    if (shell.exec(runSSH('apt-get install php7.1 php7.1-cli php7.1-common php7.1-json php7.1-opcache php7.1-mysql php7.1-mbstring php7.1-mcrypt php7.1-zip php7.1-fpm -y')).code !== 0) {
         shell.echo('Could not install PHP 7.1 FPM');
         shell.exit(1);
     }
@@ -136,45 +178,52 @@ if (program.server) {
 
     // Setup public dir
 
-    if (shell.exec(dockerBox('mkdir -p /var/www/html/public')).code !== 0) {
+    shell.echo('Adding public directory');
+
+    if (shell.exec(runSSH('mkdir -p /var/www/html/public')).code !== 0) {
         shell.echo('Could not create public directory');
         shell.exit(1);
     }
 
     // Setup Nginx
 
-    if (shell.exec(dockerBox('apt-get install nginx -y')).code !== 0) {
+    if (shell.exec(runSSH('apt-get install nginx -y')).code !== 0) {
         shell.echo('Could not install nginx');
         shell.exit(1);   
     }
 
-    if (shell.exec(dockerBox('service nginx start')).code !== 0) {
+    if (shell.exec(runSSH('service nginx start')).code !== 0) {
         shell.echo('Start nginx service');
         shell.exit(1);   
     }
 
-    if (shell.exec(dockerBox('service php7.1-fpm start')).code !== 0) {
+    if (shell.exec(runSSH('service php7.1-fpm start')).code !== 0) {
         shell.echo('Could not start PHP FPM');
         shell.exit(1);
     }
 
     // Config Nginx
 
-    let nginxConf = fs.readFileSync(path.resolve(__dirname) + '/templates/nginx.conf', {
-        encoding: 'utf8'
-    });
-    console.log(nginxConf)
-    let phpFile = fs.readFileSync(path.resolve(__dirname) + '/templates/public/index.php', {
-        encoding: 'utf8'
-    });
+    // let nginxConf = fs.readFileSync(path.resolve(__dirname) + '/templates/nginx.conf', {
+    //     encoding: 'utf8'
+    // });
+    
+    // let phpFile = fs.readFileSync(path.resolve(__dirname) + '/templates/public/index.php', {
+    //     encoding: 'utf8'
+    // });
 
-    if (shell.exec(dockerBox('touch /var/www/html/public/index.php')).code !== 0) {
-        shell.echo('Could not create index.php');
-        shell.exit(1);
-    }
+    // if (shell.exec(runSSH('touch /var/www/html/public/index.php')).code !== 0) {
+    //     shell.echo('Could not create index.php');
+    //     shell.exit(1);
+    // }
 
-    if (shell.exec(dockerBox(`echo '${escape(phpFile)}' > /var/www/html/public/index.php`)).code !== 0) {
-        shell.echo('Could not create index.php');
+    // if (shell.exec(runSSH(`echo '${escape(phpFile)}' > /var/www/html/public/index.php`)).code !== 0) {
+    //     shell.echo('Could not create index.php');
+    //     shell.exit(1);
+    // }
+
+    if (shell.exec('scp -P 4001 -i ~/.ssh/id_rsa ./templates/public/index.php ubuntu@localhost:/var/www/html/public/index.php').code !== 0) {
+        shell.echo('Could not copy over index.php');
         shell.exit(1);
     }
 
@@ -188,12 +237,12 @@ if (program.server) {
         shell.exit(1);
     }
 
-    if (shell.exec('ssh -p 4001 -i ~/.ssh/id_rsa ubuntu@localhost "service nginx restart"').code !== 0) {
+    if (shell.exec(runSSH('service nginx restart')).code !== 0) {
         shell.echo('Could not restart nginx');
         shell.exit(1);   
     }
 
-    if (shell.exec('ssh -p 4001 -i ~/.ssh/id_rsa ubuntu@localhost "service php7.1-fpm restart"').code !== 0) {
+    if (shell.exec(runSSH('service php7.1-fpm restart')).code !== 0) {
         shell.echo('Could not restart PHP FPM');
         shell.exit(1);
     }
