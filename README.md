@@ -8,11 +8,9 @@ I wanted to be able to test the provision of cloud server boxes that don't have 
 
 ## Roadmap
 
-Local mysql setup
-
-Allow param configs to build server options
-
-Create an option to read options from a config file eg. server ip etc
+- [ ] Local mysql setup
+- [ ] Allow param configs to build server options
+- [ ] Create an option to read options from a config file eg. server ip etc
 
 ## Resources
 
