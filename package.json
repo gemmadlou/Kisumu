@@ -6,11 +6,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Gemma Black <gblackuk@googlemail.com>",
+  "license": "GPLv2.1",
   "dependencies": {
     "commander": "^2.15.1",
     "escape-quotes": "^1.0.2",
     "shelljs": "^0.8.1"
-  }
+  },
+  "bin": {
+    "kisumu": "./kisumu.js"
+  },
+  "preferGlobal": true
 }
