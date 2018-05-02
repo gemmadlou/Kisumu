@@ -33,17 +33,17 @@ let publicKey = fs.readFileSync(PUBLIC_KEY_PATH);
 if (program.docker) {
     if (shell.exec(`docker container stop ${CONTAINER}`).code !== 0) {
         shell.echo(`Could not stop container: ${CONTAINER}`);
-        shell.exit(1);
+       // shell.exit(1);
     }
 
     if (shell.exec(`docker container rm ${CONTAINER}`).code !== 0) {
         shell.echo(`Could not remove container: ${CONTAINER}`);
-        shell.exit(1);
+       // shell.exit(1);
     }
 
     // Create a new docker container
 
-    if (shell.exec(`docker run -t -d -p 4000:80 -p 4001:22 --name ${CONTAINER} ubuntu`).code !== 0) {
+    if (shell.exec(`docker run -t -d -p 4000:80 -p 4001:22 --name ${CONTAINER} -v \`pwd\`:/var/www/html ubuntu:16.04`).code !== 0) {
         shell.echo('Docker run failed')
         shell.exit(1);
     }
@@ -155,7 +155,7 @@ if (program.server) {
 
     shell.echo('Adding PHP repository');
 
-    if (shell.exec(runSSH('add-apt-repository ppa:ondrej/php -y')).code !== 0) {
+    if (shell.exec(runSSH('LC_ALL=C.UTF-8 add-apt-repository -y ppa:ondrej/php')).code !== 0) {
         shell.echo('Could not add PHP repository: ' + runSSH('add-apt-repository ppa:ondrej/php -y'));
         shell.exit(1);
     }
@@ -225,12 +225,12 @@ if (program.server) {
 
     // Config Nginx
 
-    if (shell.exec('scp -P 4001 -i ~/.ssh/id_rsa ./templates/public/index.php ubuntu@localhost:/var/www/html/public/index.php').code !== 0) {
+    if (shell.exec(`scp -P 4001 -i ~/.ssh/id_rsa ${__dirname}/templates/public/index.php ubuntu@localhost:/var/www/html/public/index.php`).code !== 0) {
         shell.echo('Could not copy over index.php');
         shell.exit(1);
     }
 
-    if (shell.exec('scp -P 4001 -i ~/.ssh/id_rsa ./templates/nginx.conf ubuntu@localhost:/etc/nginx/sites-available/website.conf').code !== 0) {
+    if (shell.exec(`scp -P 4001 -i ~/.ssh/id_rsa ${__dirname}/templates/nginx.conf ubuntu@localhost:/etc/nginx/sites-available/website.conf`).code !== 0) {
         shell.echo('Could not copy over nginx config');
         shell.exit(1);
     }
