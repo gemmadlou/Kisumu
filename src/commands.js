@@ -5,10 +5,10 @@
  * @return string Command string
  */
 module.exports.docker 
-    = container => command => `docker exec ${container} sh -c "${command}"`;
+    = (container) => (command) => `docker exec ${container} sh -c "${command}"`;
 
 module.exports.ssh 
-    = ({ username, host, port, keyPath }) => command =>
+    = ({ username, host, port, keyPath }) => (command) =>
         `ssh -o StrictHostKeyChecking=no ${port ? `-p ${port}` : ''} ${keyPath ? `-i ${keyPath}` : ''} ${username}@${host} "sudo ${command}"`;
 
 module.exports.scpUpload
