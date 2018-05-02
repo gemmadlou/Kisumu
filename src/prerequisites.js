@@ -14,4 +14,4 @@ module.exports.checkPrerequisites = (shell) => {
         shell.echo('Sorry, this script requires docker');
         shell.exit(1);
     }
-}
+};
