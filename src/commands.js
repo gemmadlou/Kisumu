@@ -9,7 +9,7 @@ module.exports.docker
 
 module.exports.ssh 
     = ({ username, host, port, keyPath }) => command =>
-        `ssh ${port ? `-p ${port}` : ''} ${keyPath ? `-i ${keyPath}` : ''} ${username}@${host} "sudo ${command}"`
+        `ssh -o StrictHostKeyChecking=no ${port ? `-p ${port}` : ''} ${keyPath ? `-i ${keyPath}` : ''} ${username}@${host} "sudo ${command}"`
 
 module.exports.scpUpload
     = ({ username, host, port, keyPath }) => (localPath, remotePath) =>

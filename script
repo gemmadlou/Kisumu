@@ -48,6 +48,11 @@ if (program.docker) {
         shell.exit(1);
     }
 
+    if (shell.exec(dockerBox('apt-get update -y')).code !== 0) {
+        shell.echo('Sudo package could not be installed');
+        shell.exit(1);
+    }
+
     // Add sudo
     if (shell.exec(dockerBox('apt-get install sudo -y')).code !== 0) {
         shell.echo('Sudo package could not be installed');
@@ -117,26 +122,31 @@ if (program.docker) {
         shell.exit(1);   
     }
 
-    if (shell.exec(dockerBox('chown -R root:ubuntu /var')).code !== 0) {
-        shell.echo('Could not change ownership of var directory');
-        shell.exit(1);   
-    }
-
-    if (shell.exec(dockerBox('find /var -type -d -exec chmod 775 {} \;')).code !== 0) {
-        shell.echo('Could not change ownership of var directory');
-        shell.exit(1);   
-    }
-
     shell.echo('SSH IN USING:');
     shell.echo('ssh -i ~/.ssh/id_rsa ubuntu@localhost -p 4001');
-    shell.echo('Docker container starter. Go to http://localhost:4000');
 }
 
 // Setup PHP
 
 if (program.server) {
-    if (shell.exec('ssh-keygen -f "/home/gemma/.ssh/known_hosts" -R [localhost]:4001 -y').code !== 0) {
-        shell.echo('Could not add known hosts to keygen');
+    // if (shell.exec('ssh-keygen -f "/home/gemma/.ssh/known_hosts" -R [localhost]:4001 -y').code !== 0) {
+    //     shell.echo('Could not add known hosts to keygen');
+    //     shell.exit(1);
+    // }
+
+    if (shell.exec('ssh-keygen -R [localhost]:4001').code !== 0) {
+        shell.echo('Could not remove hosts');   
+    }
+
+    shell.echo('Updating system');
+
+    if (shell.exec(runSSH('apt-get update -y')).code !== 0) {
+        shell.echo('Could not run update: ' + runSSH('apt-get update -y'));
+        shell.exit(1);   
+    }
+
+    if (shell.exec(runSSH('apt-get install tzdata -y')).code !== 0) {
+        shell.echo('Could not install tzdata needed for Geographical regions configuration');
         shell.exit(1);
     }
 
@@ -152,13 +162,6 @@ if (program.server) {
     if (shell.exec(runSSH('add-apt-repository ppa:ondrej/php -y')).code !== 0) {
         shell.echo('Could not add PHP repository: ' + runSSH('add-apt-repository ppa:ondrej/php -y'));
         shell.exit(1);
-    }
-
-    shell.echo('Updating system');
-
-    if (shell.exec(runSSH('apt-get update -y')).code !== 0) {
-        shell.echo('Could not run update');
-        shell.exit(1);   
     }
 
     shell.echo('Upgrading system');
@@ -192,6 +195,11 @@ if (program.server) {
         shell.exit(1);   
     }
 
+    if (shell.exec(runSSH('chown -R ubuntu: /etc/nginx')).code !== 0) {
+        shell.echo('Could not change ownership of nginx directory');
+        shell.exit(1);   
+    }
+
     if (shell.exec(runSSH('service nginx start')).code !== 0) {
         shell.echo('Start nginx service');
         shell.exit(1);   
@@ -200,6 +208,23 @@ if (program.server) {
     if (shell.exec(runSSH('service php7.1-fpm start')).code !== 0) {
         shell.echo('Could not start PHP FPM');
         shell.exit(1);
+    }
+    
+    shell.echo('changing ownership');
+
+    if (shell.exec(runSSH('chown -R ubuntu: /var')).code !== 0) {
+        shell.echo('Could not change ownership of var directory');
+        shell.exit(1);   
+    }
+
+    if (shell.exec(runSSH('find /var -type d -exec chmod 755 {} \\;')).code !== 0) {
+        shell.echo('Could not change ownership of /var directories: ' + runSSH(`find /var -type d -exec chmod 755 {} \\;`));
+        shell.exit(1);   
+    }
+
+    if (shell.exec(runSSH('find /var -type f -exec chmod 644 {} \\;')).code !== 0) {
+        shell.echo('Could not change ownership of /var files');
+        shell.exit(1);   
     }
 
     // Config Nginx
@@ -232,7 +257,12 @@ if (program.server) {
         shell.exit(1);
     }
 
-    if (shell.exec('ssh -p 4001 -i ~/.ssh/id_rsa ubuntu@localhost "ln -sf /etc/nginx/sites-available/website.conf /etc/nginx/sites-enabled/website.conf"').code !== 0) {
+    if (shell.exec(runSSH('ln -sf /etc/nginx/sites-available/website.conf /etc/nginx/sites-enabled/website.conf')).code !== 0) {
+        shell.echo('Could not symlink nginx website.conf');
+        shell.exit(1);
+    }
+
+    if (shell.exec(runSSH('rm /etc/nginx/sites-enabled/default')).code !== 0) {
         shell.echo('Could not symlink nginx website.conf');
         shell.exit(1);
     }
@@ -246,5 +276,6 @@ if (program.server) {
         shell.echo('Could not restart PHP FPM');
         shell.exit(1);
     }
-    
+ 
+    shell.echo('Docker container starter. Go to http://localhost:4000');
 }
