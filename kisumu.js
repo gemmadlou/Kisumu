@@ -28,7 +28,7 @@ const runSSH = ssh({ username: USER, host: 'localhost', port: SSH_PORT, keyPath:
 
 checkPrerequisites(shell);
 
-let publicKey = fs.readFileSync(PUBLIC_KEY_PATH);
+let publicKey = fs.readFileSync(PUBLIC_KEY_PATH, 'utf8');
 
 // Clean up old container
 
