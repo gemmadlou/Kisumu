@@ -1,18 +1,14 @@
 #!/usr/bin/env node
 
+/* global process, __dirname */
+
+/* eslint-disable-next-line no-unused-vars */
+let pkginfo = require('pkginfo')(module);
 let fs = require('fs');
 let shell = require('shelljs');
-let path = require('path');
 let program = require('commander');
-let escape = require('escape-quotes');;
 let { docker, ssh } = require('./src/commands');
 let { checkPrerequisites } = require('./src/prerequisites');
-
-program
-  .version('0.1.0')
-  .option('-d, --docker', 'Create docker server')
-  .option('-s, --server', 'Setup server')
-  .parse(process.argv);
 
 const CONTAINER = 'wordpressbox';
 const WEB_PORT = '4000';
@@ -20,6 +16,12 @@ const SSH_PORT = '4001';
 const USER = 'ubuntu';
 const PUBLIC_KEY_PATH = '/home/gemma/.ssh/id_rsa.pub';
 const PRIVATE_KEY_PATH = '/home/gemma/.ssh/id_rsa';
+
+program
+    .version(module.exports.version)
+    .option('-d, --docker', 'Create docker server')
+    .option('-s, --server', 'Setup server')
+    .parse(process.argv);
 
 const dockerBox = docker(CONTAINER);
 const runSSH = ssh({ username: USER, host: 'localhost', port: SSH_PORT, keyPath: PRIVATE_KEY_PATH });
@@ -33,18 +35,16 @@ let publicKey = fs.readFileSync(PUBLIC_KEY_PATH);
 if (program.docker) {
     if (shell.exec(`docker container stop ${CONTAINER}`).code !== 0) {
         shell.echo(`Could not stop container: ${CONTAINER}`);
-       // shell.exit(1);
     }
 
     if (shell.exec(`docker container rm ${CONTAINER}`).code !== 0) {
         shell.echo(`Could not remove container: ${CONTAINER}`);
-       // shell.exit(1);
     }
 
     // Create a new docker container
 
     if (shell.exec(`docker run -t -d -p 4000:80 -p 4001:22 --name ${CONTAINER} -v \`pwd\`:/var/www/html ubuntu:16.04`).code !== 0) {
-        shell.echo('Docker run failed')
+        shell.echo('Docker run failed');
         shell.exit(1);
     }
 
@@ -90,14 +90,14 @@ if (program.docker) {
         shell.exit(1);
     }
 
-    if (shell.exec(dockerBox("apt-get install openssh-server -y")).code !== 0) {
+    if (shell.exec(dockerBox('apt-get install openssh-server -y')).code !== 0) {
         shell.echo('Installing SSH Server failed');
         shell.exit(1);
     }
 
-    shell.exec(dockerBox("service ssh status"));
+    shell.exec(dockerBox('service ssh status'));
 
-    shell.exec(dockerBox("cat /etc/ssh/sshd_config"));
+    shell.exec(dockerBox('cat /etc/ssh/sshd_config'));
 
 
     shell.exec(dockerBox('mkdir /home/ubuntu/.ssh'));
@@ -149,7 +149,7 @@ if (program.server) {
     shell.echo('Running software properties common');
 
     if (shell.exec(runSSH('apt-get install software-properties-common -y')).code !== 0) {
-        shell.echo('Could not add common software repository ' + runSSH('apt-get install software-properties-common -y'))
+        shell.echo('Could not add common software repository ' + runSSH('apt-get install software-properties-common -y'));
         shell.exit(1);
     }
 
@@ -214,7 +214,7 @@ if (program.server) {
     }
 
     if (shell.exec(runSSH('find /var -type d -exec chmod 755 {} \\;')).code !== 0) {
-        shell.echo('Could not change ownership of /var directories: ' + runSSH(`find /var -type d -exec chmod 755 {} \\;`));
+        shell.echo('Could not change ownership of /var directories: ' + runSSH('find /var -type d -exec chmod 755 {} \\;'));
         shell.exit(1);   
     }
 
@@ -255,5 +255,5 @@ if (program.server) {
         shell.exit(1);
     }
  
-    shell.echo('Docker container starter. Go to http://localhost:4000');
+    shell.echo(`Docker container starter. Go to http://localhost:${WEB_PORT}`);
 }
