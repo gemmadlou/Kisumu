@@ -129,10 +129,6 @@ if (program.docker) {
 // Setup PHP
 
 if (program.server) {
-    // if (shell.exec('ssh-keygen -f "/home/gemma/.ssh/known_hosts" -R [localhost]:4001 -y').code !== 0) {
-    //     shell.echo('Could not add known hosts to keygen');
-    //     shell.exit(1);
-    // }
 
     if (shell.exec('ssh-keygen -R [localhost]:4001').code !== 0) {
         shell.echo('Could not remove hosts');   
@@ -228,24 +224,6 @@ if (program.server) {
     }
 
     // Config Nginx
-
-    // let nginxConf = fs.readFileSync(path.resolve(__dirname) + '/templates/nginx.conf', {
-    //     encoding: 'utf8'
-    // });
-    
-    // let phpFile = fs.readFileSync(path.resolve(__dirname) + '/templates/public/index.php', {
-    //     encoding: 'utf8'
-    // });
-
-    // if (shell.exec(runSSH('touch /var/www/html/public/index.php')).code !== 0) {
-    //     shell.echo('Could not create index.php');
-    //     shell.exit(1);
-    // }
-
-    // if (shell.exec(runSSH(`echo '${escape(phpFile)}' > /var/www/html/public/index.php`)).code !== 0) {
-    //     shell.echo('Could not create index.php');
-    //     shell.exit(1);
-    // }
 
     if (shell.exec('scp -P 4001 -i ~/.ssh/id_rsa ./templates/public/index.php ubuntu@localhost:/var/www/html/public/index.php').code !== 0) {
         shell.echo('Could not copy over index.php');
