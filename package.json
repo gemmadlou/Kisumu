@@ -1,16 +1,25 @@
 {
-  "name": "devops.wordpress.server",
-  "version": "1.0.0",
+  "name": "kisumu",
+  "version": "0.0.1",
   "description": "",
   "main": "script.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "./node_modules/.bin/eslint kisumu.js src/**"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Gemma Black <gblackuk@googlemail.com>",
+  "license": "GPLv2.1",
   "dependencies": {
     "commander": "^2.15.1",
     "escape-quotes": "^1.0.2",
+    "pkginfo": "^0.4.1",
     "shelljs": "^0.8.1"
+  },
+  "bin": {
+    "kisumu": "./kisumu.js"
+  },
+  "preferGlobal": true,
+  "devDependencies": {
+    "eslint": "^4.19.1"
   }
 }

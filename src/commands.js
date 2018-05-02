@@ -13,4 +13,4 @@ module.exports.ssh
 
 module.exports.scpUpload
     = ({ username, host, port, keyPath }) => (localPath, remotePath) =>
-        'scp -P 4001 -i ~/.ssh/id_rsa ./templates/nginx.conf ubuntu@localhost:/etc/nginx/sites-available/website.conf';
+        `scp ${port ? `-P ${port}` : ''} ${keyPath ? `-i ${keyPath}` : ''} ${localPath} ${username}@${host}:${remotePath}`;
