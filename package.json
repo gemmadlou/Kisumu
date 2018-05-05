@@ -12,6 +12,7 @@
   "dependencies": {
     "commander": "^2.15.1",
     "escape-quotes": "^1.0.2",
+    "monet": "^0.8.10",
     "pkginfo": "^0.4.1",
     "shelljs": "^0.8.1"
   },

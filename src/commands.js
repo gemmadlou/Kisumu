@@ -8,8 +8,8 @@ module.exports.docker
     = (container) => (command) => `docker exec ${container} sh -c "${command}"`;
 
 module.exports.ssh 
-    = ({ username, host, port, keyPath }) => (command) =>
-        `ssh -o StrictHostKeyChecking=no ${port ? `-p ${port}` : ''} ${keyPath ? `-i ${keyPath}` : ''} ${username}@${host} "sudo ${command}"`;
+    = ({ username, host, port, keyPath }) => (command, sudo = true) =>
+        `ssh -o StrictHostKeyChecking=no ${port ? `-p ${port}` : ''} ${keyPath ? `-i ${keyPath}` : ''} ${username}@${host} "${sudo ? 'sudo' : ''} ${command}"`;
 
 module.exports.scpUpload
     = ({ username, host, port, keyPath }) => (localPath, remotePath) =>
