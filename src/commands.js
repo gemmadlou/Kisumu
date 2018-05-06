@@ -14,3 +14,25 @@ module.exports.ssh
 module.exports.scpUpload
     = ({ username, host, port, keyPath }) => (localPath, remotePath) =>
         `scp ${port ? `-P ${port}` : ''} ${keyPath ? `-i ${keyPath}` : ''} ${localPath} ${username}@${host}:${remotePath}`;
+
+module.exports.wget 
+    = (url, output) => {
+        if (url !== undefined) {
+            return new Error('Url is not defined');
+        }
+
+        if (url === '') {
+            return new Error('Url cannot be empty');
+        }
+
+        return `wget --no-check-certificate --content-disposition ${output ? `-O ${output}` : ''} ${url}`;
+    }
+
+module.exports.extractZipToCurrentDirectory
+    = (path) => {
+        if (path === undefined || path === '') {
+            return new Error('Path must be defined');
+        }
+
+        return `bsdtar -xf ${path} -s'|[^/]*/||'`;
+    }

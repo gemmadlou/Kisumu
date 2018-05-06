@@ -8,10 +8,25 @@ let fs = require('fs');
 let { resolve } = require('path');
 let shell = require('shelljs');
 let program = require('commander');
-let { docker, ssh, scpUpload } = require('./src/commands');
+let {
+    docker, 
+    ssh, 
+    scpUpload, 
+    wget,
+    extractZipToCurrentDirectory
+} = require('./src/commands');
 let { checkPrerequisites } = require('./src/prerequisites');
-let { exec } = require('./src/adapters/shell');
 let EventEmitter = require('events');
+
+let { Identity } = require('monet');
+let { 
+    lift, 
+    liftToEither,
+    connectPromiseToPromise,
+    eitherInToPromise,
+    bypassEitherIntoPromise 
+} = require('./src/helpers/monads');
+let { exec } = require('./src/adapters/shell');
 
 const CONTAINER = 'wordpressbox';
 const WEB_PORT = '4000';
@@ -139,6 +154,8 @@ program
         }
     
         // Config Nginx
+
+        shell.echo('Configuring nginx')
     
         if (shell.exec(`scp -P 4001 -i ~/.ssh/id_rsa ${__dirname}/templates/public/index.php ubuntu@localhost:/var/www/html/public/index.php`).code !== 0) {
             shell.echo('Could not copy over index.php');
@@ -167,6 +184,73 @@ program
     
         if (shell.exec(runSSH('service php7.1-fpm restart')).code !== 0) {
             shell.echo('Could not restart PHP FPM');
+            shell.exit(1);
+        }
+
+        if (shell.exec(upload(`${__dirname}/src/bash/composer-setup.sh`, '~/composer-setup.sh')).code !== 0) {
+            shell.echo('Could not upload composer setup failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH(`chmod +x ~/composer-setup.sh`)).code !== 0) {
+            shell.echo('Could not setup composer failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH(`~/composer-setup.sh`)).code !== 0) {
+            shell.echo('Could not setup composer failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('mv ~/composer.phar /usr/local/bin/composer')).code !== 0) {
+            shell.echo('Could not globalise composer.phar failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -')).code !== 0) {
+            shell.echo('getting node setup failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('apt-get install -y nodejs')).code !== 0) {
+            shell.echo('Intalling node 8 failed');
+            shell.exit(1);
+        }
+
+
+        shell.exec(runSSH('node -v'));
+
+        shell.echo('Installing GIT');
+
+        if (shell.exec(runSSH('apt-get install -y git')).code !== 0) {
+            shell.echo('sudo apt-get install git failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('apt-get install debconf-utils')).code !== 0) {
+            shell.echo('apt-get install debconf-utils failed');
+            shell.exit(1);
+        }
+
+        shell.echo('Installing mysql');
+
+        if (shell.exec(runSSH(`debconf-set-selections <<< 'mysql-server mysql-server/root_password password root'`)).code !== 0) {
+            shell.echo(`debconf-set-selections <<< 'mysql-server mysql-server/root_password password root' failed`);
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH(`debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root'`)).code !== 0) {
+            shell.echo(`debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password your_password' failed`);
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH(`apt-get -y install mysql-server`)).code !== 0) {
+            shell.echo(`apt-get -y install mysql-server`);
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('service mysql start')).code !== 0) {
+            shell.echo('sudo service mysql start failed');
             shell.exit(1);
         }
      
@@ -279,76 +363,33 @@ program
     });
 
 program
-    .command('provision:2')
-    .action((cmd) => {
+    .command('setup:multisite')
+    .action(async (cmd) => {
 
-        if (shell.exec(upload(`${__dirname}/src/bash/composer-setup.sh`, '~/composer-setup.sh')).code !== 0) {
-            shell.echo('Could not upload composer setup failed');
-            shell.exit(1);
-        }
+        /**
+         * ## Validate
+         * Validate zip url
+         * Validate path
+         * 
+         * ## Prepare commands
+         * Get zip
+         * Unzip 
+         * Remove zip
+         * Composer install
+         * 
+         * ## Execute each
+         */
+        
+        let res = Promise.resolve(lift(wget, 'https://github.com/WordPress-Composer/WordPress-Network-Starter/archive/0.0.1.zip', 'wp.zip'))
+            .then(eitherInToPromise(exec('Download WordPress zip')))
 
-        if (shell.exec(runSSH(`chmod +x ~/composer-setup.sh`)).code !== 0) {
-            shell.echo('Could not setup composer failed');
-            shell.exit(1);
-        }
+            .then(bypassEitherIntoPromise(lift(extractZipToCurrentDirectory, 'wp.zip')))
+            .then(eitherInToPromise(exec('Unzip file')))
 
-        if (shell.exec(runSSH(`~/composer-setup.sh`)).code !== 0) {
-            shell.echo('Could not setup composer failed');
-            shell.exit(1);
-        }
-
-        if (shell.exec(runSSH('mv ~/composer.phar /usr/local/bin/composer')).code !== 0) {
-            shell.echo('Could not globalise composer.phar failed');
-            shell.exit(1);
-        }
-
-        if (shell.exec(runSSH('curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -')).code !== 0) {
-            shell.echo('getting node setup failed');
-            shell.exit(1);
-        }
-
-        if (shell.exec(runSSH('apt-get install -y nodejs')).code !== 0) {
-            shell.echo('Intalling node 8 failed');
-            shell.exit(1);
-        }
-
-
-        shell.exec(runSSH('node -v'));
-
-        shell.echo('Installing GIT');
-
-        if (shell.exec(runSSH('apt-get install -y git')).code !== 0) {
-            shell.echo('sudo apt-get install git failed');
-            shell.exit(1);
-        }
-
-        if (shell.exec(runSSH('apt-get install debconf-utils')).code !== 0) {
-            shell.echo('apt-get install debconf-utils failed');
-            shell.exit(1);
-        }
-
-        shell.echo('Installing mysql');
-
-        if (shell.exec(runSSH(`debconf-set-selections <<< 'mysql-server mysql-server/root_password password root'`)).code !== 0) {
-            shell.echo(`debconf-set-selections <<< 'mysql-server mysql-server/root_password password root' failed`);
-            shell.exit(1);
-        }
-
-        if (shell.exec(runSSH(`debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root'`)).code !== 0) {
-            shell.echo(`debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password your_password' failed`);
-            shell.exit(1);
-        }
-
-        if (shell.exec(runSSH(`apt-get -y install mysql-server`)).code !== 0) {
-            shell.echo(`apt-get -y install mysql-server`);
-            shell.exit(1);
-        }
-
-        if (shell.exec(runSSH('service mysql start')).code !== 0) {
-            shell.echo('sudo service mysql start failed');
-            shell.exit(1);
-        }
-
+            //.then(Promise.resolve(lift(extractZipToCurrentDirectory, 'wp.zip')))
+            //.then(connectOutputToPromise(exec('Extracting WordPress zip')))
+            //.then(console.log)
+            .then(result => result.cata(console.error, console.log))
     });
 
 program

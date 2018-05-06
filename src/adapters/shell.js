@@ -1,26 +1,21 @@
-let { exec } = require('shelljs');
+let { exec, echo } = require('shelljs');
 
-/**
- * 
- * @param string eventMessage 
- * @param EventEmitter bus
- * @param string command
- * @return Promise
- */
-module.exports.exec = (eventMessage, bus) => (command) => {
+module.exports.exec = (message) => (command) => {
     return new Promise((resolve, reject) => {
-        let { stderr, stdout } = exec(command, { silent: true, async: true});
+        let { stderr, stdout } = exec(command, { silent: true, async: true });
 
         stdout.on('data', (outputFromCommand) => {
+            if (!bus) return;
             bus.emit(eventMessage, outputFromCommand)
         });
 
-        stdout.on('end', (outputFromCommand) => {
-            resolve(outputFromCommand);
+        stdout.on('end', () => {
+            echo(message);
+            resolve(message);
         });
 
-        stderr.on(err => {
-            reject(new Error(err));
+        stdout.on('error', () => {
+            reject(new Error(`Failed! ${message}`));
         });
     });
 }
