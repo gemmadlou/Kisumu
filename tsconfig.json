@@ -1,13 +1,14 @@
 {
     "compilerOptions": {
-        "module": "system",
-        "noImplicitAny": true,
+        "module": "commonjs",
+        "noImplicitAny": false,
         "removeComments": true,
         "preserveConstEnums": true,
-        "outFile": "./dist/kisumu.js",
-        "moduleResolution": "Node",
+        "outDir": "./dist/",
+        "rootDir": "src",
         "sourceMap": true,
-        "types": ["node"],
+        "moduleResolution": "node",
+        "types": ["node", "shelljs"],
         "target": "es6"
     },
     "include": [

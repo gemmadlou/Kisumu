@@ -40,6 +40,8 @@ const dockerBox = docker(CONTAINER);
 const runSSH = ssh({ username: USER, host: 'localhost', port: SSH_PORT, keyPath: PRIVATE_KEY_PATH });
 const upload = scpUpload({ username: USER, host: 'localhost', port: SSH_PORT, keyPath: PRIVATE_KEY_PATH });
 
+let { setupMultisite } = require('./dist/actions/setup-multisite')
+
 class bus extends EventEmitter {}
 
 checkPrerequisites(shell);
@@ -172,8 +174,8 @@ program
             shell.exit(1);
         }
     
-        if (shell.exec(runSSH('rm /etc/nginx/sites-enabled/default')).code !== 0) {
-            shell.echo('Could not symlink nginx website.conf');
+        if (shell.exec(runSSH('rm -f /etc/nginx/sites-enabled/default')).code !== 0) {
+            shell.echo('Could not remove default nginx config from sites-enabled');
             shell.exit(1);
         }
     
@@ -217,7 +219,6 @@ program
             shell.exit(1);
         }
 
-
         shell.exec(runSSH('node -v'));
 
         shell.echo('Installing GIT');
@@ -249,8 +250,18 @@ program
             shell.exit(1);
         }
 
+        if (shell.exec(runSSH(`usermod -d /var/lib/mysql/ mysql`)).code !== 0) {
+            shell.echo('sudo usermod -d /var/lib/mysql/ mysql failed');
+            shell.exit(1);
+        }
+
         if (shell.exec(runSSH('service mysql start')).code !== 0) {
             shell.echo('sudo service mysql start failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('apt-get install -y bsdtar')).code !== 0) {
+            shell.echo('apt-get -y bsdtar failed!');
             shell.exit(1);
         }
      
@@ -356,10 +367,16 @@ program
 program
     .command('docker:ssh')
     .action((cmd) => {
-        sh.exec('ls -l');
+        shell.exec('ls -l');
         shell.exec('ssh-keygen -R [localhost]:4001');
         
         shell.echo('ssh -i ~/.ssh/id_rsa ubuntu@localhost -p 4001');
+    });
+
+program
+    .command('docker:ip')
+    .action((cmd) => {
+        shell.exec(`docker inspect -f '{{.Name}} - {{.NetworkSettings.IPAddress }}' $(docker ps -aq)`)
     });
 
 program
@@ -379,17 +396,25 @@ program
          * 
          * ## Execute each
          */
+
+        console.log(setupMultisite({ 
+            zipUrl: 'https://github.com/WordPress-Composer/WordPress-Network-Starter/archive/0.0.1.zip', 
+            path: '/var/www/html/wp.zip',
+            webDirectory: '/var/www/html',
+            runSSH,
+            exec
+        }));
         
-        let res = Promise.resolve(lift(wget, 'https://github.com/WordPress-Composer/WordPress-Network-Starter/archive/0.0.1.zip', 'wp.zip'))
-            .then(eitherInToPromise(exec('Download WordPress zip')))
+        // let res = Promise.resolve(lift(wget, 'https://github.com/WordPress-Composer/WordPress-Network-Starter/archive/0.0.1.zip', 'wp.zip'))
+        //     .then(eitherInToPromise(exec('Download WordPress zip')))
 
-            .then(bypassEitherIntoPromise(lift(extractZipToCurrentDirectory, 'wp.zip')))
-            .then(eitherInToPromise(exec('Unzip file')))
+        //     .then(bypassEitherIntoPromise(lift(extractZipToCurrentDirectory, 'wp.zip')))
+        //     .then(eitherInToPromise(exec('Unzip file')))
 
-            //.then(Promise.resolve(lift(extractZipToCurrentDirectory, 'wp.zip')))
-            //.then(connectOutputToPromise(exec('Extracting WordPress zip')))
-            //.then(console.log)
-            .then(result => result.cata(console.error, console.log))
+        //     //.then(Promise.resolve(lift(extractZipToCurrentDirectory, 'wp.zip')))
+        //     //.then(connectOutputToPromise(exec('Extracting WordPress zip')))
+        //     //.then(console.log)
+        //     .then(result => result.cata(console.error, console.log))
     });
 
 program
