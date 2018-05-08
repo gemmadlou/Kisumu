@@ -173,6 +173,11 @@ program
             shell.echo('Could not symlink nginx website.conf');
             shell.exit(1);
         }
+
+        if (shell.exec(`scp -P 4001 -i ~/.ssh/id_rsa ${__dirname}/templates/nginx.network.conf ubuntu@localhost:/etc/nginx/sites-available/wp.network.conf`).code !== 0) {
+            shell.echo('Could not copy over wp network nginx config');
+            shell.exit(1);
+        }
     
         if (shell.exec(runSSH('rm -f /etc/nginx/sites-enabled/default')).code !== 0) {
             shell.echo('Could not remove default nginx config from sites-enabled');
@@ -209,7 +214,7 @@ program
             shell.exit(1);
         }
 
-        if (shell.exec(runSSH('curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -')).code !== 0) {
+        if (shell.exec(runSSH('wget -qO- https://deb.nodesource.com/setup_8.x | sudo -E bash -')).code !== 0) {
             shell.echo('getting node setup failed');
             shell.exit(1);
         }
@@ -264,6 +269,28 @@ program
             shell.echo('apt-get -y bsdtar failed!');
             shell.exit(1);
         }
+
+        shell.echo('Installing WP CLI');
+
+        if (shell.exec(runSSH(`wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar`)).code !== 0) {
+            shell.echo('wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('php wp-cli.phar --info')).code !== 0) {
+            shell.echo('wp-cli did not download properly');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('chmod +x wp-cli.phar')).code !== 0) {
+            shell.echo('chmod +x wp-cli.phar failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('mv wp-cli.phar /usr/local/bin/wp')).code !== 0) {
+            shell.echo('sudo mv wp-cli.phar /usr/local/bin/wp failed');
+            shell.exit(1);
+        }
      
         shell.echo(`Docker container starter. Go to http://localhost:${WEB_PORT}`);
     });
@@ -271,6 +298,20 @@ program
 program
     .command('setup:dockerbox', 'Set up and launches a docker box')
     .action((cmd) => {
+
+        if (shell.exec(`docker network disconnect wpnetwork ${CONTAINER}`).code !== 0) {
+            shell.echo(`Could not disconnect wpnetwork from container ${CONTAINER}`);
+        }
+
+        if (shell.exec(`docker network rm wpnetwork`).code !== 0) {
+            shell.echo('Could not remove wpnetwork on docker networks');
+        }
+
+        if (shell.exec(`docker network create wpnetwork`).code !== 0) {
+            shell.echo('Could not create wpnetwork');
+            shell.exit(1);
+        }
+
         if (shell.exec(`docker container stop ${CONTAINER}`).code !== 0) {
             shell.echo(`Could not stop container: ${CONTAINER}`);
         }
@@ -283,6 +324,16 @@ program
     
         if (shell.exec(`docker run -t -d -p 4000:80 -p 4001:22 --name ${CONTAINER} -v \`pwd\`:/var/www/html ubuntu:16.04`).code !== 0) {
             shell.echo('Docker run failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(`docker network connect wpnetwork ${CONTAINER}`).code !== 0) {
+            shell.echo('Docker network connect wpnetwork to container failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec('docker network inspect wpnetwork').code !== 0) {
+            shell.echo('Could not get network information');
             shell.exit(1);
         }
     
@@ -382,39 +433,13 @@ program
 program
     .command('setup:multisite')
     .action(async (cmd) => {
-
-        /**
-         * ## Validate
-         * Validate zip url
-         * Validate path
-         * 
-         * ## Prepare commands
-         * Get zip
-         * Unzip 
-         * Remove zip
-         * Composer install
-         * 
-         * ## Execute each
-         */
-
-        console.log(setupMultisite({ 
+        setupMultisite({ 
             zipUrl: 'https://github.com/WordPress-Composer/WordPress-Network-Starter/archive/0.0.1.zip', 
             path: '/var/www/html/wp.zip',
             webDirectory: '/var/www/html',
             runSSH,
             exec
-        }));
-        
-        // let res = Promise.resolve(lift(wget, 'https://github.com/WordPress-Composer/WordPress-Network-Starter/archive/0.0.1.zip', 'wp.zip'))
-        //     .then(eitherInToPromise(exec('Download WordPress zip')))
-
-        //     .then(bypassEitherIntoPromise(lift(extractZipToCurrentDirectory, 'wp.zip')))
-        //     .then(eitherInToPromise(exec('Unzip file')))
-
-        //     //.then(Promise.resolve(lift(extractZipToCurrentDirectory, 'wp.zip')))
-        //     //.then(connectOutputToPromise(exec('Extracting WordPress zip')))
-        //     //.then(console.log)
-        //     .then(result => result.cata(console.error, console.log))
+        });
     });
 
 program
