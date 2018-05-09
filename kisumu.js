@@ -27,6 +27,7 @@ let {
     bypassEitherIntoPromise 
 } = require('./src/helpers/monads');
 let { exec } = require('./src/adapters/shell');
+let { spawn, execFileSync } = require('child_process');
 
 const CONTAINER = 'wordpressbox';
 const WEB_PORT = '4000';
@@ -270,6 +271,8 @@ program
             shell.exit(1);
         }
 
+        shell.echo('Creating the kisumu database');
+
         shell.echo('Installing WP CLI');
 
         if (shell.exec(runSSH(`wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar`)).code !== 0) {
@@ -422,6 +425,8 @@ program
         shell.exec('ssh-keygen -R [localhost]:4001');
         
         shell.echo('ssh -i ~/.ssh/id_rsa ubuntu@localhost -p 4001');
+        
+        let child = execFileSync('ssh', ['-i ~/.ssh/id_rsa', 'ubuntu@localhost', '-p 4001'], {stdio: 'inherit'});
     });
 
 program
