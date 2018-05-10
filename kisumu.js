@@ -41,7 +41,7 @@ const dockerBox = docker(CONTAINER);
 const runSSH = ssh({ username: USER, host: 'localhost', port: SSH_PORT, keyPath: PRIVATE_KEY_PATH });
 const upload = scpUpload({ username: USER, host: 'localhost', port: SSH_PORT, keyPath: PRIVATE_KEY_PATH });
 
-let { setupMultisite } = require('./dist/actions/setup-multisite')
+let { setupWordpress } = require('./dist/actions/setup-wordpress')
 
 class bus extends EventEmitter {}
 
@@ -436,9 +436,9 @@ program
     });
 
 program
-    .command('setup:multisite')
+    .command('install:wordpress')
     .action(async (cmd) => {
-        setupMultisite({ 
+        setupWordpress({ 
             zipUrl: 'https://github.com/WordPress-Composer/WordPress-Network-Starter/archive/0.0.2.zip', 
             path: '/var/www/html/wp.zip',
             webDirectory: '/var/www/html',

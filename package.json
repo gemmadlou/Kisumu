@@ -23,10 +23,14 @@
   },
   "preferGlobal": true,
   "devDependencies": {
+    "@types/js-yaml": "^3.11.1",
     "@types/node": "^10.0.4",
+    "@types/sanctuary": "^0.14.2",
     "@types/shelljs": "^0.7.9",
     "eslint": "^4.19.1",
+    "js-yaml": "^3.11.0",
     "ramda-fantasy": "^0.8.0",
+    "sanctuary": "^0.14.1",
     "typescript": "^2.8.3",
     "url-parse": "^1.4.0"
   }
