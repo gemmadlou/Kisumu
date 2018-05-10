@@ -58,29 +58,35 @@ const download = (path, url) => {
     return createCommand(`wget --no-check-certificate --content-disposition ${path ? `-O ${path}` : ''} ${url}`);
 };
 const unzip = (path, distDirectory) => {
-    console.log(`L=C.UTF-8 bsdtar -C ${distDirectory} -xf ${path} -s'|[^/]*/||'`);
     return createCommand(`L=C.UTF-8 bsdtar -C ${distDirectory} -xf ${path} -s'|[^/]*/||'`);
 };
 const removeFile = (path) => {
     return createCommand(`rm ${path}`);
 };
 const composerInstall = (directory) => {
-    console.log(directory, 'gemma');
-    return createCommand(`cd ${directory} && composer install`);
+    return createCommand(`composer install --directory ${directory}`);
 };
 const moveTo = (srcPath, destPath) => {
     return createCommand(`mv ${srcPath} ${destPath}`);
+};
+const getIP = () => {
+    return `ip address show eth0 | awk '/inet / {gsub(/\/.*/,"",$2); print $2}'`;
+};
+const setWPInstall = (distDirectory) => {
+    return `cd ${distDirectory}/public && wp core install --url="http://172.17.0.2"  --title='New WP Site' --admin_user="admin" --admin_password="admin" --admin_email="gblackuk@gmail.com"`;
 };
 const prepareCommands = (validatedOptions) => {
     let downloadRes = toE(tryCatch(download, validatedOptions.path, validatedOptions.zipUrl));
     let unzipRes = toE(tryCatch(unzip, validatedOptions.path, validatedOptions.webDirectory));
     let removeZipRes = toE(tryCatch(removeFile, validatedOptions.path));
     let composerRes = toE(tryCatch(composerInstall, validatedOptions.webDirectory));
+    let setWPInstallRes = toE(tryCatch(setWPInstall, validatedOptions.webDirectory));
     return monet_1.Right({})
         .map(some => downloadRes.cata((err) => err, (command) => (Object.assign({}, some, { download: command }))))
         .map(some => unzipRes.cata(err => err, command => (Object.assign({}, some, { unzip: command }))))
         .map(some => removeZipRes.cata(err => err, command => (Object.assign({}, some, { removeZip: command }))))
         .map(some => composerRes.cata(err => err, command => (Object.assign({}, some, { composerInstall: command }))))
+        .map(some => setWPInstallRes.cata(err => err, command => (Object.assign({}, some, { setWPInstall: command }))))
         .cata((err) => err, (commands) => commands);
 };
 exports.runCommands = (commands, runSSH, exec) => __awaiter(this, void 0, void 0, function* () {
@@ -89,21 +95,23 @@ exports.runCommands = (commands, runSSH, exec) => __awaiter(this, void 0, void 0
         let res2 = yield exec(commands.unzip)(runSSH(commands.unzip));
         let res3 = yield exec(commands.removeZip)(runSSH(commands.removeZip));
         let res4 = yield exec(commands.composerInstall)(runSSH(commands.composerInstall, false));
-        console.log(res1, 'async1');
-        console.log(res2, 'async2');
-        console.log(res3, 'async3');
-        console.log(res4, 'async4');
+        let res5 = yield exec(commands.setWPInstall)(runSSH(commands.setWPInstall, false));
+        return [res1, res2, res3, res4, res5];
     }
     catch (e) {
         return new Error(e);
     }
 });
+let eToPromise = (fn) => (e) => e.flatMap(option => fn(option));
+const run = {
+    validate: (unvalidOptions) => __awaiter(this, void 0, void 0, function* () { return toE(validateOptions(unvalidOptions)); }),
+    prepare: (validOptions) => __awaiter(this, void 0, void 0, function* () { return toE(prepareCommands(validOptions)); }),
+    execute: (ssh, exec) => (commands) => __awaiter(this, void 0, void 0, function* () { return exports.runCommands(commands, ssh, exec); })
+};
 exports.setupMultisite = (unvalidatedOptions) => __awaiter(this, void 0, void 0, function* () {
-    let validatedOptions = validateOptions(unvalidatedOptions);
-    console.log(validatedOptions);
-    let commands = prepareCommands(validatedOptions);
-    let resOfCommands = yield exports.runCommands(commands, validatedOptions.runSSH, validatedOptions.exec);
-    console.log(resOfCommands);
-    let events = '';
+    let result = yield run.validate(unvalidatedOptions)
+        .then(eToPromise(run.prepare))
+        .then(eToPromise(run.execute(unvalidatedOptions.runSSH, unvalidatedOptions.exec)));
+    return result;
 });
 //# sourceMappingURL=setup-multisite.js.map

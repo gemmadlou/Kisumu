@@ -439,12 +439,14 @@ program
     .command('setup:multisite')
     .action(async (cmd) => {
         setupMultisite({ 
-            zipUrl: 'https://github.com/WordPress-Composer/WordPress-Network-Starter/archive/0.0.1.zip', 
+            zipUrl: 'https://github.com/WordPress-Composer/WordPress-Network-Starter/archive/0.0.2.zip', 
             path: '/var/www/html/wp.zip',
             webDirectory: '/var/www/html',
             runSSH,
             exec
-        });
+        })
+        .then(success => shell.echo('Installation complete'))
+        .catch(err => shell.echo('Could not complete tests'));
     });
 
 program

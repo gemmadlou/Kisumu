@@ -1,12 +1,11 @@
-let { exec, echo } = require('shelljs');
+let { exec, echo, exit } = require('shelljs');
 
 module.exports.exec = (message) => (command) => {
     return new Promise((resolve, reject) => {
-        let { stderr, stdout } = exec(command, { silent: true, async: true });
+        let { stderr, stdout } = exec(command, { silent: false, async: true });
 
         stdout.on('data', (outputFromCommand) => {
-            if (!bus) return;
-            bus.emit(eventMessage, outputFromCommand)
+            echo(outputFromCommand);
         });
 
         stdout.on('end', () => {
@@ -15,7 +14,10 @@ module.exports.exec = (message) => (command) => {
         });
 
         stdout.on('error', () => {
-            reject(new Error(`Failed! ${message}`));
+            echo('FAILURE');
+            echo(`fail: ${command}`)
+            //reject(new Error(`Failed! ${message}`));
+            exit(1);
         });
     });
 }
