@@ -9,14 +9,13 @@ module.exports.exec = (message) => (command) => {
         });
 
         stdout.on('end', () => {
-            echo(message);
             resolve(message);
         });
 
         stdout.on('error', () => {
             echo('FAILURE');
-            echo(`fail: ${command}`)
-            //reject(new Error(`Failed! ${message}`));
+            echo(`failed: ${command}`)
+            reject(new Error(`Failed! ${message}`));
             exit(1);
         });
     });

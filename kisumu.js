@@ -16,16 +16,7 @@ let {
     extractZipToCurrentDirectory
 } = require('./src/commands');
 let { checkPrerequisites } = require('./src/prerequisites');
-let EventEmitter = require('events');
 
-let { Identity } = require('monet');
-let { 
-    lift, 
-    liftToEither,
-    connectPromiseToPromise,
-    eitherInToPromise,
-    bypassEitherIntoPromise 
-} = require('./src/helpers/monads');
 let { exec } = require('./src/adapters/shell');
 let { spawn, execFileSync } = require('child_process');
 
@@ -41,9 +32,9 @@ const dockerBox = docker(CONTAINER);
 const runSSH = ssh({ username: USER, host: 'localhost', port: SSH_PORT, keyPath: PRIVATE_KEY_PATH });
 const upload = scpUpload({ username: USER, host: 'localhost', port: SSH_PORT, keyPath: PRIVATE_KEY_PATH });
 
-let { setupWordpress } = require('./dist/actions/setup-wordpress')
-
-class bus extends EventEmitter {}
+let { setupWordpress } = require('./dist/actions/setup-wordpress');
+let { setupMultisite } = require('./dist/actions/setup-multisite');
+let { dockerDestroy } = require('./dist/actions/destroy');
 
 checkPrerequisites(shell);
 
@@ -302,28 +293,10 @@ program
     .command('setup:dockerbox', 'Set up and launches a docker box')
     .action((cmd) => {
 
-        if (shell.exec(`docker network disconnect wpnetwork ${CONTAINER}`).code !== 0) {
-            shell.echo(`Could not disconnect wpnetwork from container ${CONTAINER}`);
-        }
-
-        if (shell.exec(`docker network rm wpnetwork`).code !== 0) {
-            shell.echo('Could not remove wpnetwork on docker networks');
-        }
-
         if (shell.exec(`docker network create wpnetwork`).code !== 0) {
             shell.echo('Could not create wpnetwork');
             shell.exit(1);
         }
-
-        if (shell.exec(`docker container stop ${CONTAINER}`).code !== 0) {
-            shell.echo(`Could not stop container: ${CONTAINER}`);
-        }
-    
-        if (shell.exec(`docker container rm ${CONTAINER}`).code !== 0) {
-            shell.echo(`Could not remove container: ${CONTAINER}`);
-        }
-    
-        // Create a new docker container
     
         if (shell.exec(`docker run -t -d -p 4000:80 -p 4001:22 --name ${CONTAINER} -v \`pwd\`:/var/www/html ubuntu:16.04`).code !== 0) {
             shell.echo('Docker run failed');
@@ -437,7 +410,7 @@ program
 
 program
     .command('install:wordpress')
-    .action(async (cmd) => {
+    .action((cmd) => {
         setupWordpress({ 
             zipUrl: 'https://github.com/WordPress-Composer/WordPress-Network-Starter/archive/0.0.2.zip', 
             path: '/var/www/html/wp.zip',
@@ -447,6 +420,18 @@ program
         })
         .then(success => shell.echo('Installation complete'))
         .catch(err => shell.echo('Could not complete tests'));
+    });
+
+program
+    .command('multisite')
+    .action((cmd) => {
+        setupMultisite({ runSSH, exec });
+    });
+
+program
+    .command('docker:destroy')
+    .action((cmd) => {
+        dockerDestroy({ CONTAINER });
     });
 
 program
