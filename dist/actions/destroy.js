@@ -1,26 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const shelljs_1 = require("shelljs");
-let runSync = (exec, echo, exit) => (command) => {
-    let { code } = exec(command.executable);
-    echo(`${command.executable} failed!`);
-    echo(command.failureMessage);
-    if (code !== 0 && command.stopOnError) {
-        exit(1);
-    }
-};
-const makeCommand = (command, failureMessage, stopOnError = true) => {
-    return {
-        executable: command,
-        failureMessage,
-        stopOnError
-    };
-};
-const executeCommands = (commands, fn) => {
-    commands.forEach(command => fn(command));
-};
+const helpers_1 = require("../helpers/helpers");
 exports.dockerDestroy = ({ CONTAINER = 'wordpressbox' }) => {
-    let run = runSync(shelljs_1.exec, shelljs_1.echo, shelljs_1.exit);
     let commands = [
         [
             `docker network disconnect wpnetwork ${CONTAINER}`,
@@ -43,8 +24,6 @@ exports.dockerDestroy = ({ CONTAINER = 'wordpressbox' }) => {
             false
         ]
     ];
-    executeCommands(commands.map((command, index) => {
-        return makeCommand(command[0], command[1], command[2] === true);
-    }), run);
+    helpers_1.runCommands(commands);
 };
 //# sourceMappingURL=destroy.js.map

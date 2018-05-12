@@ -1,40 +1,6 @@
-import { exec, echo, exit } from 'shelljs';
-
-type runSyncExec = (command: runnerConfig) => void;
-type runSyncFun = (exec: Function, echo: Function, exit: Function) => runSyncExec;
-
-let runSync = (exec: Function, echo: Function, exit: Function) => (command: runnerConfig) => {
-    let { code } = exec(command.executable);
-
-    echo(`${command.executable} failed!`);
-    echo(command.failureMessage);
-
-    if (code !== 0 && command.stopOnError) {
-        exit(1);
-    }
-}
-
-type runnerConfig = {
-    executable: string,
-    failureMessage: string,
-    stopOnError: boolean
-}
-
-const makeCommand = (command: string, failureMessage: string, stopOnError: boolean = true) : runnerConfig => {
-    return {
-        executable: command,
-        failureMessage,
-        stopOnError
-    }
-}
-
-const executeCommands = (commands: Array<runnerConfig>, fn: runSyncExec) => {
-    commands.forEach(command => fn(command));
-}
+import { runCommands } from "../helpers/helpers";
 
 export const dockerDestroy = ({ CONTAINER = 'wordpressbox' } : { CONTAINER : string }) => {
-
-    let run = runSync(exec, echo, exit);
 
     let commands = [
         [
@@ -59,7 +25,5 @@ export const dockerDestroy = ({ CONTAINER = 'wordpressbox' } : { CONTAINER : str
         ]
     ];
 
-    executeCommands(commands.map((command: Array<any>, index) => {
-        return makeCommand(command[0], command[1], command[2] === true);
-    }), run)
+    runCommands(commands);
 }

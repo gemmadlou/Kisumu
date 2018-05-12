@@ -35,6 +35,7 @@ const upload = scpUpload({ username: USER, host: 'localhost', port: SSH_PORT, ke
 let { setupWordpress } = require('./dist/actions/setup-wordpress');
 let { setupMultisite } = require('./dist/actions/setup-multisite');
 let { dockerDestroy } = require('./dist/actions/destroy');
+let { dockerStart } = require('./dist/actions/docker-start');
 
 checkPrerequisites(shell);
 
@@ -42,6 +43,18 @@ program
     .version(module.exports.version, '-v, --version');
 
 let publicKey = fs.readFileSync(PUBLIC_KEY_PATH, 'utf8');
+
+program
+    .command('docker:start', 'Start the wordpress docker container')
+    .action((cmd) => {
+        dockerStart({ CONTAINER, dockerBox });
+    });
+
+program
+    .command('provision:basic')
+    .action((cmd) => {
+        
+    });
 
 program
     .command('provision')
@@ -238,7 +251,7 @@ program
         }
 
         if (shell.exec(runSSH(`debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root'`)).code !== 0) {
-            shell.echo(`debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password your_password' failed`);
+            shell.echo(`debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password root' failed`);
             shell.exit(1);
         }
 
@@ -252,8 +265,28 @@ program
             shell.exit(1);
         }
 
+        if (shell.exec(runSSH(`{ echo "[client]"; echo "user=root"; echo "password=root"; } >> ~/.my.conf`)).code !== 0) {
+            shell.echo('{ echo "[client]"; echo "user=root"; echo "password=root"; } >> ~/.my.conf failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH(`chmod 600 ~/.my.cnf`)).code !== 0) {
+            shell.echo('chmod 600 .my.cnf failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('chown root: ~/.my.cnf')).code !== 0) {
+            shell.echo('chown root: ~/.my.cnf');
+            shell.exit(1);
+        }
+
         if (shell.exec(runSSH('service mysql start')).code !== 0) {
             shell.echo('sudo service mysql start failed');
+            shell.exit(1);
+        }
+
+        if (shell.exec(runSSH('echo "create database wp" | sudo mysql -u root', false)).code !== 0) {
+            shell.echo('Creating database failed');
             shell.exit(1);
         }
 
