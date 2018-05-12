@@ -36,6 +36,7 @@ let { setupWordpress } = require('./dist/actions/setup-wordpress');
 let { setupMultisite } = require('./dist/actions/setup-multisite');
 let { dockerDestroy } = require('./dist/actions/destroy');
 let { dockerStart } = require('./dist/actions/docker-start');
+let { provision } = require('./dist/actions/provision');
 
 checkPrerequisites(shell);
 
@@ -53,12 +54,13 @@ program
 program
     .command('provision:basic')
     .action((cmd) => {
-        
+        provision({ CONTAINER, runSSH, isSSH: false });
     });
 
 program
     .command('provision')
     .action((cmd) => {
+        // @todo add to provision
         if (shell.exec('ssh-keygen -R [localhost]:4001').code !== 0) {
             shell.echo('Could not remove hosts');   
         }
@@ -88,7 +90,6 @@ program
             shell.echo('Could not add PHP repository: ' + runSSH('add-apt-repository ppa:ondrej/php -y'));
             shell.exit(1);
         }
-
 
         shell.echo('Updating system again');
     
@@ -128,6 +129,7 @@ program
             shell.exit(1);   
         }
     
+        // @todo provisioning
         if (shell.exec(runSSH('chown -R ubuntu: /etc/nginx')).code !== 0) {
             shell.echo('Could not change ownership of nginx directory');
             shell.exit(1);   
