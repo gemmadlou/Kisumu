@@ -1,0 +1,18 @@
+{
+  "name": "kisumu",
+  "version": "0.0.1",
+  "description": "",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+  },
+  "author": "Gemma Black <gblackuk@googlemail.com>",
+  "license": "GPLv2.1",
+  "dependencies": {},
+  "bin": {
+    "kisumu": "./kisumu.js"
+  },
+  "preferGlobal": true,
+  "devDependencies": {
+  }
+}
