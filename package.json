@@ -5,34 +5,14 @@
   "main": "script.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "./node_modules/.bin/eslint kisumu.js src/**",
-    "build": " ./node_modules/typescript/bin/tsc",
-    "build:watch": " ./node_modules/typescript/bin/tsc --watch"
   },
   "author": "Gemma Black <gblackuk@googlemail.com>",
   "license": "GPLv2.1",
-  "dependencies": {
-    "commander": "^2.15.1",
-    "escape-quotes": "^1.0.2",
-    "monet": "^0.8.10",
-    "pkginfo": "^0.4.1",
-    "shelljs": "^0.8.1"
-  },
+  "dependencies": {},
   "bin": {
     "kisumu": "./kisumu.js"
   },
   "preferGlobal": true,
   "devDependencies": {
-    "@types/js-yaml": "^3.11.1",
-    "@types/node": "^10.0.4",
-    "@types/sanctuary": "^0.14.2",
-    "@types/shelljs": "^0.7.9",
-    "eslint": "^4.19.1",
-    "js-yaml": "^3.11.0",
-    "node-shell-parser": "^0.2.1",
-    "ramda-fantasy": "^0.8.0",
-    "sanctuary": "^0.14.1",
-    "typescript": "^2.8.3",
-    "url-parse": "^1.4.0"
   }
 }
