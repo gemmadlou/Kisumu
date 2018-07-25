@@ -4,18 +4,20 @@
 
 /* eslint-disable-next-line no-unused-vars */
 let pkginfo = require('pkginfo')(module);
+let path = require('path');
 let fs = require('fs');
 let shell = require('shelljs');
 let program = require('commander');
 let { docker, ssh } = require('./src/commands');
 let { checkPrerequisites } = require('./src/prerequisites');
+const homedir = require('homedir');
 
 const CONTAINER = 'wordpressbox';
 const WEB_PORT = '4000';
 const SSH_PORT = '4001';
 const USER = 'ubuntu';
-const PUBLIC_KEY_PATH = '/home/gemma/.ssh/id_rsa.pub';
-const PRIVATE_KEY_PATH = '/home/gemma/.ssh/id_rsa';
+const PUBLIC_KEY_PATH = path.resolve(homedir() + '/.ssh/id_rsa.pub');
+const PRIVATE_KEY_PATH = path.resolve(homedir() + '/.ssh/id_rsa');
 
 program
     .version(module.exports.version)
